@@ -1,0 +1,286 @@
+# 🚀 Day 6 of 90: Prompt Engineering & Prompt Design
+
+Phase 1 — LLM Fundamentals | Total: 80 minutes
+
+Today, we're revisiting Day 6: Prompt Engineering, which comes before your Day 7 lesson on prompting versus fine-tuning.
+
+Your goal is to learn how to give an LLM clear instructions, provide examples, control its output format, and test whether your prompts work reliably. These skills will be useful when you build your PortfolioAI assistant and RAG applications.
+
+## Today's agenda
+
+First 20 minutes — Learn and revise
+
+Prompt structure, zero-shot prompting, few-shot prompting, output constraints, and common mistakes.
+
+Next 60 minutes — Hands-on Python
+
+Build a prompt-testing program that classifies PortfolioAI user requests.
+
+## Part 1 — Learn the concepts (20 minutes)
+
+### 0–5 minutes: What is prompt engineering?
+
+Prompt engineering is the practice of designing instructions and context to guide an LLM toward a desired response. Clear instructions and explicit output formats often improve results.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://huggingface.co\&sz=32)
+
+Hugging Face
+
++1
+
+
+
+Imagine your PortfolioAI application receives this request:
+
+> Add my GitHub project to my portfolio.
+
+Your application needs to classify it as a `PROJECT` request.
+
+A vague prompt might be:
+
+```
+What does the user want?
+```
+
+A clearer prompt would be:
+
+```
+Task: Classify the user's request.
+
+Allowed categories:
+- RESUME
+- PROJECT
+- CERTIFICATE
+
+Request: Add my GitHub project to my portfolio.
+
+Return only one category.
+```
+
+Expected answer:
+
+```
+PROJECT
+```
+
+The second prompt specifies the task, allowed labels, input, and expected format.
+
+### 5–10 minutes: Zero-shot and few-shot prompting
+
+Zero-shot prompting: Give instructions without providing worked examples.
+
+```
+zero_shot_prompt = """Classify the request as RESUME, PROJECT, or CERTIFICATE.Return only the category.Request: Add my machine learning project.Category:"""
+```
+
+Few-shot prompting: Provide examples that demonstrate the expected behavior.
+
+```
+few_shot_prompt = """Classify each request as RESUME, PROJECT, or CERTIFICATE.Request: Update my CV.Category: RESUMERequest: Add my GitHub repository.Category: PROJECTRequest: Upload my course certificate.Category: CERTIFICATERequest: Add my chatbot project.Category:"""
+```
+
+Few-shot examples can help a model follow the intended pattern, although they do not guarantee correctness.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://huggingface.co\&sz=32)
+
+Hugging Face
+
++1
+
+
+
+### 10–15 minutes: The five parts of a good prompt
+
+1\. Role
+
+Who should the model act as?
+
+Example: `You are a portfolio support assistant.`
+
+2\. Task
+
+What should it do?
+
+Example: `Classify the user's request.`
+
+3\. Context
+
+What information should it use?
+
+Example: The actual user message.
+
+4\. Constraints
+
+What rules must the response follow?
+
+Example: Choose only from three categories.
+
+5\. Output format
+
+How should the answer look?
+
+Example: Return one category, with no explanation.
+
+### 15–20 minutes: Common prompting mistakes
+
+| Mistake                                 | Better approach                                                              |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| Instructions are vague                  | State the exact task.                                                        |
+| Output is inconsistent                  | Specify the required format.                                                 |
+| Too many unrelated instructions         | Separate the task into clear steps.                                          |
+| The model invents missing details       | Provide reliable context and instruct it to acknowledge missing information. |
+| One successful test is treated as proof | Test several representative inputs.                                          |
+
+Official reading: [Hugging Face — Prompt Engineering](https://huggingface.co/docs/transformers/main/en/tasks/prompting?utm_source=chatgpt.com)
+
+## Part 2 — Python practice (60 minutes)
+
+### 0–10 minutes: Set up the environment
+
+Open [Google Colab](https://colab.research.google.com/?utm_source=chatgpt.com) and create a new notebook.
+
+Run this cell:
+
+```
+%pip install -q transformers torch sentencepiece
+```
+
+Then load a small text-to-text model:
+
+```
+import torchfrom transformers import AutoTokenizer, AutoModelForSeq2SeqLMMODEL_NAME = "google/flan-t5-small"device = torch.device(    "cuda" if torch.cuda.is_available() else "cpu")tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)model.to(device)model.eval()print("Model loaded successfully!")print("Device:", device)
+```
+
+Expected output:
+
+```
+Model loaded successfully!
+Device: cpu
+```
+
+Your device may show `cuda` if a compatible GPU is available.
+
+The model is pretrained; we are not training it today. We are experimenting with different prompts.
+
+### 10–20 minutes: Build a basic prompt function
+
+Create a function that generates a response from any prompt.
+
+```
+def ask_model(prompt):    inputs = tokenizer(        prompt,        return_tensors="pt",        truncation=True,        max_length=512    ).to(device)    with torch.no_grad():        output_ids = model.generate(            **inputs,            max_new_tokens=20        )    return tokenizer.decode(        output_ids[0],        skip_special_tokens=True    )
+```
+
+How it works:
+
+1. `tokenizer()` converts the prompt into numerical inputs.
+2. `.to(device)` moves the inputs to the model's device.
+3. `torch.no_grad()` avoids gradient calculations during inference.
+4. `model.generate()` produces an output sequence.
+5. `tokenizer.decode()` converts the output tokens back into text.
+
+Test it:
+
+```
+prompt = """Classify the request as RESUME, PROJECT, or CERTIFICATE.Return only one category.Request: Add my GitHub repository to my portfolio.Category:"""print(ask_model(prompt))
+```
+
+Expected semantic answer: `PROJECT`. The actual model may return a different answer, so inspect the output.
+
+### 20–30 minutes: Compare a vague prompt with a clear prompt
+
+```
+vague_prompt = """What does this user want?Add my internship certificate to my portfolio."""clear_prompt = """Classify the request into one category:RESUME, PROJECT, or CERTIFICATE.Request: Add my internship certificate to my portfolio.Return only the category name."""print("Vague prompt:", ask_model(vague_prompt))print("Clear prompt:", ask_model(clear_prompt))
+```
+
+The clear prompt should encourage a `CERTIFICATE` response. The vague prompt may produce an explanation or an inconsistent result.
+
+Your task: Observe the outputs. Don't assume the clearer prompt must win every test—measure what happens.
+
+### 30–40 minutes: Test few-shot prompting
+
+```
+few_shot_prompt = """Classify portfolio requests using these examples.Request: Rewrite my resume summary.Category: RESUMERequest: Add my Python application.Category: PROJECTRequest: Upload my internship certificate.Category: CERTIFICATENow classify this request.Request: Add my chatbot repository to my projects page.Category:"""print(ask_model(few_shot_prompt))
+```
+
+Expected answer:
+
+```
+PROJECT
+```
+
+The examples demonstrate the relationship between a request and its category.
+
+Now change the final request to:
+
+```
+Request: Correct the graduation year on my CV.
+Category:
+```
+
+Expected answer: `RESUME`.
+
+### 40–50 minutes: Build a reusable classifier
+
+Let's turn the prompts into a reusable function.
+
+```
+def classify_request(message, use_examples=False):    instructions = """    Classify the portfolio request into exactly one category:    RESUME, PROJECT, or CERTIFICATE.    Return only the category name.    """    examples = ""    if use_examples:        examples = """        Request: Update my CV.        Category: RESUME        Request: Add my GitHub repository.        Category: PROJECT        Request: Upload my course certificate.        Category: CERTIFICATE        """    prompt = f"""    {instructions}    {examples}    Request: {message}    Category:    """    return ask_model(prompt)print(classify_request("Fix my resume education section."))print(classify_request(    "Add my RAG chatbot project.",    use_examples=True
+```
+
+Expected semantic categories:
+
+```
+RESUME
+PROJECT
+CERTIFICATE
+```
+
+These are expected results, not guaranteed exact model outputs.
+
+### 50–55 minutes: Evaluate multiple requests
+
+```
+test_cases = [    ("Update my professional summary.", "RESUME"),    ("Add my GitHub machine learning project.", "PROJECT"),    ("Upload my internship completion certificate.", "CERTIFICATE"),    ("Correct the education details in my CV.", "RESUME"),    ("Add my chatbot demo link.", "PROJECT"),]correct = 0for message, expected in test_cases:    prediction = classify_request(        message,        use_examples=True    ).strip().upper()    is_correct = prediction == expected    if is_correct:        correct += 1    print("Request:", message)    print("Expected:", expected)    print("Predicted:", prediction)    print("Correct:", is_correct)    print("-" * 40)accuracy = correct / len(test_cases)print(f"Accuracy: {accuracy:.0%}")
+```
+
+Your result will depend on the model's actual predictions. With five examples, each correct prediction changes the accuracy by 20 percentage points.
+
+For a more reliable evaluation, you would need more varied test cases.
+
+### 55–60 minutes: Mini-assignment
+
+Add these features to your classifier:
+
+1. Create five new test requests.
+2. Include at least one ambiguous request, such as `"Update my profile."`
+3. Compare zero-shot and few-shot results.
+4. Count how many requests each prompt handles correctly.
+5. Write two sentences explaining which prompt performed better and why.
+
+You can use the following template:
+
+```
+my_test_cases = [    ("Add my latest AI project.", "PROJECT"),    ("Replace my old CV.", "RESUME"),    ("Upload my course certificate.", "CERTIFICATE"),    # Add two more examples]
+```
+
+## 🛠️ Debugging tips
+
+- Model download fails: Check your internet connection and retry.
+- `ModuleNotFoundError`: Run the installation cell again.
+- Unexpected category: Inspect the exact generated text; models may return extra words.
+- Slow generation: Start with short prompts and small output limits.
+- Poor accuracy: Improve your instructions, test different examples, and inspect ambiguous cases.
+
+## Day 6 completion checklist
+
+Loaded the pretrained model successfully
+
+Compared vague and clear prompts
+
+Tested zero-shot and few-shot prompting
+
+Evaluated the classifier on multiple examples
+
+0 of 4 tasks completed
+
+When you're finished, send me your zero-shot output, few-shot output, and test accuracy. I'll review the results and help you fix any issues before you continue to the next lesson in your roadmap.
